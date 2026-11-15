@@ -4,7 +4,12 @@ let data=null,selected=null,lastPdf=null;
 
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function latinDigits(s){return s.replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));}
-function cleanPhone(){return latinDigits(els.phone.value).replace(/\D/g,'');}
+function cleanPhone(){
+ let digits=latinDigits(els.phone.value).replace(/\D/g,'');
+ if(digits.startsWith('00974')&&digits.length===13)digits=digits.slice(5);
+ else if(digits.startsWith('974')&&digits.length===11)digits=digits.slice(3);
+ return digits.length===8?`974${digits}`:null;
+}
 function setStatus(message,error=false){els.status.textContent=message;els.status.classList.toggle('error',error);}
 function sectionMarkup(blocks){return blocks.map(b=>b.kind==='heading'?`<h4>${escapeHtml(b.text)}</h4>`:`<p class="doc-paragraph">${escapeHtml(b.text)}</p>`).join('');}
 function renderPreview(){
@@ -52,7 +57,7 @@ els.select.addEventListener('change',e=>setActivity(e.target.value));
 els.toggle.addEventListener('click',()=>{const collapsed=els.preview.classList.toggle('collapsed');els.toggle.textContent=collapsed?'عرض المعاينة':'طي المعاينة';});
 els.send.addEventListener('click',()=>{
  if(!selected)return;
- const number=cleanPhone();if(number.length<8||number.length>15){setStatus('اكتب رقم واتساب دوليًا من ٨ إلى ١٥ رقمًا، من دون علامة +.',true);els.phone.focus();return;}
+ const number=cleanPhone();if(!number){setStatus('اكتب رقمًا قطريًا من ٨ أرقام بعد المفتاح 974.',true);els.phone.focus();return;}
  const url=makeWhatsAppUrl(number),win=window.open(url,'_blank');
  if(win){win.opener=null;setStatus('فُتحت محادثة واتساب بالنص الحالي. اضغط إرسال داخل واتساب.');}
  else window.location.href=url;
