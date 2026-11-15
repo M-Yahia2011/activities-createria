@@ -1,15 +1,15 @@
-const els={search:document.querySelector('#search-activity'),select:document.querySelector('#activity-select'),count:document.querySelector('#activity-count'),summary:document.querySelector('#activity-summary'),preview:document.querySelector('#preview-content'),subtitle:document.querySelector('#preview-subtitle'),phone:document.querySelector('#phone'),status:document.querySelector('#status'),statusLink:document.querySelector('#status-link'),prepare:document.querySelector('#prepare-send'),download:document.querySelector('#download-pdf'),share:document.querySelector('#share-pdf'),toggle:document.querySelector('#toggle-preview')};
+const els={search:document.querySelector('#search-activity'),select:document.querySelector('#activity-select'),count:document.querySelector('#activity-count'),summary:document.querySelector('#activity-summary'),preview:document.querySelector('#preview-content'),subtitle:document.querySelector('#preview-subtitle'),phone:document.querySelector('#phone'),status:document.querySelector('#status'),send:document.querySelector('#send-whatsapp'),share:document.querySelector('#share-pdf'),toggle:document.querySelector('#toggle-preview')};
 const sectionNames={general:'الاشتراطات العامة المناسبة للنشاط',specific:'الاشتراطات الخاصة بالنشاط',operations:'الممارسات والإجراءات التشغيلية المناسبة للنشاط'};
 let data=null,selected=null,lastPdf=null;
 
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function latinDigits(s){return s.replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));}
 function cleanPhone(){return latinDigits(els.phone.value).replace(/\D/g,'');}
-function setStatus(message,error=false,link=null){els.status.textContent=message;els.status.classList.toggle('error',error);els.statusLink.hidden=!link;if(link)els.statusLink.href=link;}
+function setStatus(message,error=false){els.status.textContent=message;els.status.classList.toggle('error',error);}
 function sectionMarkup(blocks){return blocks.map(b=>b.kind==='heading'?`<h4>${escapeHtml(b.text)}</h4>`:`<p class="doc-paragraph">${escapeHtml(b.text)}</p>`).join('');}
 function renderPreview(){
  if(!selected)return;
- lastPdf=null;els.share.textContent='↗ تحميل PDF ثم مشاركته';
+ lastPdf=null;
  const intro=selected.intro.map(x=>x.text).join(' ');
  els.summary.textContent=intro||'تم تحميل نصوص النشاط من الملحق.';
  els.preview.innerHTML=`<h2 class="doc-title">${escapeHtml(selected.title)}</h2><p class="doc-source">${escapeHtml(data.source)}</p>`+
@@ -17,42 +17,56 @@ function renderPreview(){
  ['general','specific','operations'].map(key=>`<section class="doc-section"><h3>${sectionNames[key]}</h3>${sectionMarkup(selected[key])}</section>`).join('');
  els.subtitle.textContent=`${selected.title} · الاشتراطات كاملة`;
 }
-function setActivity(id){selected=data.items.find(x=>x.id===id)||data.items[0];renderPreview();}
+function clearActivity(message){selected=null;lastPdf=null;els.send.disabled=true;els.share.disabled=true;els.select.selectedIndex=-1;els.preview.innerHTML='<p>اختر نشاطًا لعرض اشتراطاته.</p>';els.subtitle.textContent='محتوى النشاط المختار';els.summary.textContent=message;setStatus('');}
+function setActivity(id){
+ selected=data.items.find(x=>x.id===id)||null;
+ if(!selected){clearActivity('اختر نشاطًا من القائمة للمتابعة.');return;}
+ renderPreview();els.send.disabled=false;els.share.disabled=true;setStatus('جارٍ تحميل ملف النشاط…');
+ const item=selected;
+ hostedPdf(item).then(()=>{if(selected===item){els.share.disabled=false;setStatus('الملف جاهز للمشاركة.');}})
+  .catch(()=>{if(selected===item){els.share.disabled=false;setStatus('تعذر تحميل الملف. اضغط «مشاركة الملف» للمحاولة مجددًا.',true);}});
+}
 function fillSelect(query=''){
  const q=query.trim().toLocaleLowerCase('ar');
  const found=data.items.filter(x=>(x.title+' '+x.intro.map(y=>y.text).join(' ')).toLocaleLowerCase('ar').includes(q));
  els.select.replaceChildren(...found.map(item=>{const option=document.createElement('option');option.value=item.id;option.textContent=item.title;return option;}));
  els.count.textContent=`${found.length.toLocaleString('ar')} نشاط`;
- if(found.length){if(!found.some(x=>x.id===selected?.id))setActivity(found[0].id);else els.select.value=selected.id;}
- else {selected=null;lastPdf=null;els.preview.innerHTML='<p>ما لقيناش نشاطًا بالاسم ده. جرّب كلمة أقصر.</p>';els.summary.textContent='';}
+ if(selected&&found.some(x=>x.id===selected.id))els.select.value=selected.id;
+ else clearActivity(found.length?'اختر نشاطًا من القائمة للمتابعة.':'ما لقيناش نشاطًا بالاسم ده. جرّب كلمة أقصر.');
 }
-function safeFilename(){return `اشتراطات-${selected.title.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-')}.pdf`;}
-async function hostedPdf(){
- if(!selected)throw new Error('اختر نشاطًا أولًا.');
- if(lastPdf)return lastPdf;
- const response=await fetch(`pdfs/${encodeURIComponent(selected.id)}.pdf`);
+async function hostedPdf(item=selected){
+ if(!item)throw new Error('اختر نشاطًا أولًا.');
+ if(selected?.id===item.id&&lastPdf)return lastPdf;
+ const response=await fetch(`pdfs/${encodeURIComponent(item.id)}.pdf`);
  if(!response.ok)throw new Error('تعذر تحميل ملف PDF المستضاف. حاول مرة أخرى.');
  const blob=await response.blob();
  if(blob.size<5000)throw new Error('ملف PDF المستضاف غير مكتمل. حاول مرة أخرى.');
- lastPdf=new File([blob],safeFilename(),{type:'application/pdf'});
- setStatus(`ملف PDF جاهز من Netlify · ${(blob.size/1024/1024).toFixed(1)} ميغابايت`);
- return lastPdf;
+ const file=new File([blob],`اشتراطات-${item.title.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-')}.pdf`,{type:'application/pdf'});
+ if(selected?.id===item.id)lastPdf=file;
+ return file;
 }
 function downloadFile(file){const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 function makeWhatsAppUrl(number){const message=`مرفق اشتراطات نشاط: ${selected.title}\n${data.source}`;return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;}
 els.search.addEventListener('input',e=>fillSelect(e.target.value));
 els.select.addEventListener('change',e=>setActivity(e.target.value));
 els.toggle.addEventListener('click',()=>{const collapsed=els.preview.classList.toggle('collapsed');els.toggle.textContent=collapsed?'عرض المعاينة':'طي المعاينة';});
-els.download.addEventListener('click',async()=>{els.download.disabled=true;try{const f=await hostedPdf();downloadFile(f);setStatus('تم تنزيل الملف.');}catch(e){setStatus(e.message,true);}finally{els.download.disabled=false;}});
-els.prepare.addEventListener('click',async()=>{
+els.send.addEventListener('click',()=>{
+ if(!selected)return;
  const number=cleanPhone();if(number.length<8||number.length>15){setStatus('اكتب رقم واتساب دوليًا من ٨ إلى ١٥ رقمًا، من دون علامة +.',true);els.phone.focus();return;}
- els.prepare.disabled=true;
- const win=window.open('about:blank','_blank');
- try{const f=await hostedPdf();downloadFile(f);const url=makeWhatsAppUrl(number);if(win){win.location.replace(url);setStatus('تم تنزيل PDF وفتح محادثة واتساب. أرفق الملف الذي نُزّل ثم اضغط إرسال.');}else setStatus('تم تنزيل PDF. اضغط الرابط لفتح محادثة واتساب ثم أرفق الملف.',false,url);}
- catch(e){setStatus(e.message,true);}finally{els.prepare.disabled=false;}
+ const url=makeWhatsAppUrl(number),win=window.open(url,'_blank');
+ if(win){win.opener=null;setStatus('فُتحت محادثة واتساب بالنص الحالي. اضغط إرسال داخل واتساب.');}
+ else window.location.href=url;
 });
 els.share.addEventListener('click',async()=>{
- els.share.disabled=true;try{if(!lastPdf){await hostedPdf();els.share.textContent='↗ شارك PDF الآن';setStatus('الملف جاهز. اضغط «شارك PDF الآن» لفتح قائمة المشاركة.');return;}const payload={files:[lastPdf]};if(!navigator.canShare?.(payload))throw new Error('مشاركة الملفات غير مدعومة في هذا المتصفح. نزّل PDF ثم أرسله من تطبيق الملفات.');const sharing=navigator.share({files:[lastPdf],title:selected.title,text:`اشتراطات ${selected.title} · ${data.source}`});await sharing;setStatus('اختر واتساب من قائمة المشاركة، ثم اختر المستلِم.');}
- catch(e){if(e.name==='AbortError')setStatus('أُلغيت المشاركة.');else setStatus(e.message,true);}finally{els.share.disabled=false;}
+ if(!selected)return;
+ els.share.disabled=true;
+ try{
+  if(!lastPdf){await hostedPdf();setStatus('الملف جاهز. اضغط «مشاركة الملف» مرة أخرى.');return;}
+  const payload={files:[lastPdf]};
+  if(navigator.canShare?.(payload)){
+   await navigator.share({files:[lastPdf],title:selected.title,text:`اشتراطات ${selected.title} · ${data.source}`});
+   setStatus('اختر واتساب أو التطبيق الذي تريد مشاركة الملف معه.');
+  }else{downloadFile(lastPdf);setStatus('تم تنزيل الملف. يمكنك مشاركته من التنزيلات أو تطبيق الملفات.');}
+ }catch(e){if(e.name==='AbortError')setStatus('أُلغيت المشاركة.');else setStatus(e.message,true);}finally{els.share.disabled=!selected;}
 });
-fetch('assets/requirements.json').then(r=>{if(!r.ok)throw new Error('تعذر تحميل بيانات الأنشطة.');return r.json();}).then(json=>{data=json;els.share.hidden=!(navigator.share&&navigator.canShare&&typeof File!=='undefined');fillSelect();}).catch(e=>{setStatus(e.message,true);});
+fetch('assets/requirements.json').then(r=>{if(!r.ok)throw new Error('تعذر تحميل بيانات الأنشطة.');return r.json();}).then(json=>{data=json;fillSelect();}).catch(e=>{setStatus(e.message,true);});
