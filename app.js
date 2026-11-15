@@ -1,6 +1,7 @@
 const els={search:document.querySelector('#search-activity'),select:document.querySelector('#activity-select'),count:document.querySelector('#activity-count'),summary:document.querySelector('#activity-summary'),preview:document.querySelector('#preview-content'),subtitle:document.querySelector('#preview-subtitle'),phone:document.querySelector('#phone'),status:document.querySelector('#status'),statusLink:document.querySelector('#status-link'),prepare:document.querySelector('#prepare-send'),download:document.querySelector('#download-pdf'),share:document.querySelector('#share-pdf'),toggle:document.querySelector('#toggle-preview')};
 const sectionNames={general:'الاشتراطات العامة المناسبة للنشاط',specific:'الاشتراطات الخاصة بالنشاط',operations:'الممارسات والإجراءات التشغيلية المناسبة للنشاط'};
-let data=null,selected=null,lastPdf=null;
+let data=null,selected=null,lastPdf=null,pdfCacheDb=null;
+const pdfCacheName='aldaayen-food-checklists',pdfCacheVersion=1,pdfCacheLimit=4;
 
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function latinDigits(s){return s.replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));}
@@ -48,9 +49,44 @@ function makePdfNode(){
  document.querySelector('#pdf-stage').replaceChildren(node);return node;
 }
 function safeFilename(){return `اشتراطات-${selected.title.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-')}.pdf`;}
+function pdfCacheKey(){return `${selected.id}|${enabledSections().slice().sort().join(',')}|v1`;}
+function openPdfCache(){
+ if(!('indexedDB' in window))return Promise.resolve(null);
+ if(pdfCacheDb)return pdfCacheDb;
+ pdfCacheDb=new Promise(resolve=>{
+  try{
+   const request=indexedDB.open(pdfCacheName,pdfCacheVersion);
+   request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains('files'))request.result.createObjectStore('files',{keyPath:'key'});};
+   request.onsuccess=()=>resolve(request.result);
+   request.onerror=()=>resolve(null);
+  }catch{resolve(null);}
+ });
+ return pdfCacheDb;
+}
+async function readCachedPdf(key){
+ const db=await openPdfCache();if(!db)return null;
+ return new Promise(resolve=>{
+  try{
+   const request=db.transaction('files','readonly').objectStore('files').get(key);
+   request.onsuccess=()=>{const row=request.result;if(!row){resolve(null);return;}row.usedAt=Date.now();db.transaction('files','readwrite').objectStore('files').put(row);resolve(new File([row.blob],row.name,{type:'application/pdf',lastModified:row.lastModified||Date.now()}));};
+   request.onerror=()=>resolve(null);
+  }catch{resolve(null);}
+ });
+}
+async function writeCachedPdf(key,file){
+ const db=await openPdfCache();if(!db)return;
+ try{
+  const tx=db.transaction('files','readwrite'),store=tx.objectStore('files');
+  store.put({key,name:file.name,blob:file,lastModified:file.lastModified,usedAt:Date.now()});
+  const request=store.getAll();
+  request.onsuccess=()=>request.result.sort((a,b)=>b.usedAt-a.usedAt).slice(pdfCacheLimit).forEach(row=>store.delete(row.key));
+ }catch{}
+}
 async function generatePdf(){
  if(!selected)throw new Error('اختر نشاطًا أولًا.');
  if(!window.html2pdf){window.print();throw new Error('مكتبة PDF غير متاحة حاليًا. فتحنا نافذة الطباعة؛ اختر «حفظ كـ PDF».');}
+ const key=pdfCacheKey(),cached=await readCachedPdf(key);
+ if(cached){lastPdf=cached;setStatus('ملف PDF جاهز من النسخة المحفوظة على هذا الجهاز.');return cached;}
  const node=makePdfNode();setStatus('جارٍ تجهيز ملف PDF…');
  const options={margin:[12,12,14,12],filename:safeFilename(),image:{type:'jpeg',quality:.96},html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['h2','h3']}};
  const worker=window.html2pdf().set(options).from(node).toPdf();
@@ -60,7 +96,7 @@ async function generatePdf(){
   pdf.setDrawColor(190,151,71);pdf.setLineWidth(.25);pdf.rect(8,8,194,281);
  }
  const blob=pdf.output('blob');
- lastPdf=new File([blob],safeFilename(),{type:'application/pdf'});
+ lastPdf=new File([blob],safeFilename(),{type:'application/pdf'});await writeCachedPdf(key,lastPdf);
  setStatus(`ملف PDF جاهز · ${(blob.size/1024/1024).toFixed(1)} ميغابايت`);
  return lastPdf;
 }
