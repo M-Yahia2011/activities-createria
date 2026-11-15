@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#12352d">
-  <meta name="description" content="ابحث عن اشتراطات النشاط الغذائي وحدد المطلوب وصدّره في ملف PDF لإرساله عبر واتساب.">
+  <meta name="description" content="ابحث عن اشتراطات النشاط الغذائي ونزّل ملف PDF الجاهز لإرساله عبر واتساب.">
   <title>اشتراطات الأنشطة الغذائية</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -23,7 +23,7 @@
       <div class="intro-copy">
         <span class="eyebrow">ابحث · اختر · أرسل</span>
         <h1>اشتراطات نشاطك، جاهزة للمشاركة</h1>
-        <p>اختر نشاطًا غذائيًا، حدّد الأقسام التي تحتاجها، ثم نزّلها PDF وافتح محادثة واتساب لإرسالها.</p>
+        <p>اختر نشاطًا غذائيًا، ثم نزّل ملف الاشتراطات الجاهز أو شاركه عبر واتساب.</p>
       </div>
       <div class="intro-icon" aria-hidden="true">📋</div>
     </section>
@@ -42,12 +42,7 @@
 
       <div class="detail panel">
         <div class="section-head">
-          <div><span class="step">٢</span><div><h2>حدّد ما تريد إرساله</h2><p>الملف الكامل جاهز على Netlify؛ عند حذف قسم يُجهَّز ملف مخصص</p></div></div>
-        </div>
-        <div class="checks" role="group" aria-label="أقسام الاشتراطات">
-          <label class="check-card"><input type="checkbox" value="general" checked><span class="check-ui"></span><span><b>الاشتراطات العامة</b><small id="general-count"></small></span></label>
-          <label class="check-card"><input type="checkbox" value="specific" checked><span class="check-ui"></span><span><b>الاشتراطات الخاصة</b><small id="specific-count"></small></span></label>
-          <label class="check-card"><input type="checkbox" value="operations" checked><span class="check-ui"></span><span><b>الممارسات والإجراءات</b><small id="operations-count"></small></span></label>
+          <div><span class="step">٢</span><div><h2>نزّل أو أرسل الملف</h2><p>ملف النشاط الكامل جاهز على Netlify</p></div></div>
         </div>
 
         <div class="phone-block">
@@ -57,7 +52,7 @@
         </div>
 
         <div class="actions">
-          <button class="button button-primary" id="prepare-send"><span>⬇</span> تجهيز PDF وفتح واتساب</button>
+          <button class="button button-primary" id="prepare-send"><span>⬇</span> تنزيل PDF وفتح واتساب</button>
           <button class="button button-secondary" id="download-pdf"><span>▧</span> تنزيل PDF فقط</button>
           <button class="button button-share" id="share-pdf" hidden><span>↗</span> مشاركة PDF من الهاتف</button>
         </div>
@@ -76,8 +71,6 @@
     <footer>المصدر: الملحق رقم ١ للقرار القطري رقم ٣٨ لسنة ٢٠٢٥ · أداة لتجميع النص حسب النشاط</footer>
   </main>
 
-  <div id="pdf-stage" aria-hidden="true"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>
