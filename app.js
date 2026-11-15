@@ -40,7 +40,7 @@ function makePdfNode(){
  brand.append(municipality,qatar);node.append(brand);
  const title=document.createElement('h1');title.textContent=selected.title;node.append(title);
  const sub=document.createElement('p');sub.className='pdf-sub';sub.textContent='اشتراطات المنشآت الغذائية';node.append(sub);
- for(const block of selected.intro){const p=document.createElement(block.kind==='heading'?'h3':'p');p.textContent=block.text;if(block.kind!=='heading')p.className='pdf-paragraph';node.append(p);}
+ for(const block of selected.intro){if(block.text.trimStart().startsWith('المصدر'))continue;const p=document.createElement(block.kind==='heading'?'h3':'p');p.textContent=block.text.split('المصدر الرسمي:')[0].trim();if(block.kind!=='heading')p.className='pdf-paragraph';node.append(p);}
  for(const key of chosen){
   const h=document.createElement('h2');h.textContent=sectionNames[key];node.append(h);
   for(const block of selected[key]){const p=document.createElement(block.kind==='heading'?'h3':'p');p.textContent=block.text;if(block.kind!=='heading')p.className='pdf-paragraph';node.append(p);}
@@ -48,7 +48,17 @@ function makePdfNode(){
  document.querySelector('#pdf-stage').replaceChildren(node);return node;
 }
 function safeFilename(){return `اشتراطات-${selected.title.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-')}.pdf`;}
-function pdfCacheKey(){return `${selected.id}|${enabledSections().slice().sort().join(',')}|v2`;}
+function pdfCacheKey(){return `${selected.id}|${enabledSections().slice().sort().join(',')}|v3`;}
+function completeActivitySelected(){return enabledSections().length===3;}
+async function hostedPdf(){
+ const response=await fetch(`pdfs/${encodeURIComponent(selected.id)}.pdf`);
+ if(!response.ok)throw new Error('تعذر تحميل ملف PDF المستضاف. حاول مرة أخرى.');
+ const blob=await response.blob();
+ if(blob.size<5000)throw new Error('ملف PDF المستضاف غير مكتمل. حاول مرة أخرى.');
+ lastPdf=new File([blob],safeFilename(),{type:'application/pdf'});
+ setStatus(`ملف PDF جاهز من Netlify · ${(blob.size/1024/1024).toFixed(1)} ميغابايت`);
+ return lastPdf;
+}
 function openPdfCache(){
  if(!('indexedDB' in window))return Promise.resolve(null);
  if(pdfCacheDb)return pdfCacheDb;
@@ -83,6 +93,7 @@ async function writeCachedPdf(key,file){
 }
 async function generatePdf(){
  if(!selected)throw new Error('اختر نشاطًا أولًا.');
+ if(completeActivitySelected())return hostedPdf();
  if(!window.html2pdf){window.print();throw new Error('مكتبة PDF غير متاحة حاليًا. فتحنا نافذة الطباعة؛ اختر «حفظ كـ PDF».');}
  const key=pdfCacheKey(),cached=await readCachedPdf(key);
  if(cached){lastPdf=cached;setStatus('ملف PDF جاهز من النسخة المحفوظة على هذا الجهاز.');return cached;}
