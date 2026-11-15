@@ -39,17 +39,16 @@ function makePdfNode(){
  const qatar=document.createElement('img');qatar.className='pdf-brand-logo';qatar.src='assets/qatar-ministry.png';qatar.alt='شعار دولة قطر ووزارة البلدية';
  brand.append(municipality,qatar);node.append(brand);
  const title=document.createElement('h1');title.textContent=selected.title;node.append(title);
- const sub=document.createElement('p');sub.className='pdf-sub';sub.textContent=`اشتراطات المنشآت الغذائية · ${data.source}`;node.append(sub);
+ const sub=document.createElement('p');sub.className='pdf-sub';sub.textContent='اشتراطات المنشآت الغذائية';node.append(sub);
  for(const block of selected.intro){const p=document.createElement(block.kind==='heading'?'h3':'p');p.textContent=block.text;if(block.kind!=='heading')p.className='pdf-paragraph';node.append(p);}
  for(const key of chosen){
   const h=document.createElement('h2');h.textContent=sectionNames[key];node.append(h);
   for(const block of selected[key]){const p=document.createElement(block.kind==='heading'?'h3':'p');p.textContent=block.text;if(block.kind!=='heading')p.className='pdf-paragraph';node.append(p);}
  }
- const note=document.createElement('p');note.className='pdf-meta';note.textContent='النص مستخرج بتقنية OCR من الملحق رقم ١ للقرار القطري رقم ٣٨ لسنة ٢٠٢٥. راجع الأرقام والجداول في المصدر الرسمي عند استخدامها لأغراض الترخيص أو الامتثال.';node.append(note);
  document.querySelector('#pdf-stage').replaceChildren(node);return node;
 }
 function safeFilename(){return `اشتراطات-${selected.title.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-')}.pdf`;}
-function pdfCacheKey(){return `${selected.id}|${enabledSections().slice().sort().join(',')}|v1`;}
+function pdfCacheKey(){return `${selected.id}|${enabledSections().slice().sort().join(',')}|v2`;}
 function openPdfCache(){
  if(!('indexedDB' in window))return Promise.resolve(null);
  if(pdfCacheDb)return pdfCacheDb;
