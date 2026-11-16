@@ -41,9 +41,44 @@ function setActivity(id){
  hostedPdf(item).then(()=>{if(selected===item){els.share.disabled=false;setStatus('الملف جاهز للمشاركة.');}})
   .catch(()=>{if(selected===item){els.share.disabled=false;setStatus('تعذر تحميل الملف. اضغط «مشاركة الملف» للمحاولة مجددًا.',true);}});
 }
+function searchWords(value){
+ const normalized=value.normalize('NFKC').toLocaleLowerCase('ar')
+  .replace(/[\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/g,'')
+  .replace(/[أإآٱ]/g,'ا').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/ى/g,'ي').replace(/ة/g,'ه');
+ return (normalized.match(/[a-z0-9\u0621-\u064a]+/g)||[]).map(word=>word.replace(/^ال(?=.{3})/,'')).filter(Boolean);
+}
+function oneEditAway(a,b){
+ if(Math.abs(a.length-b.length)>1)return false;
+ let i=0,j=0,edits=0;
+ while(i<a.length&&j<b.length){
+  if(a[i]===b[j]){i++;j++;continue;}
+  if(++edits>1)return false;
+  if(a.length>b.length)i++;else if(a.length<b.length)j++;else{i++;j++;}
+ }
+ return edits+(i<a.length||j<b.length?1:0)<=1;
+}
+function activitySearchScore(item,query){
+ const words=searchWords(item.title);
+ const terms=words.concat(words.slice(0,-1).map((word,index)=>word+words[index+1]));
+ let total=0;
+ for(const word of query){
+  let best=Infinity;
+  for(const term of terms){
+   if(term===word){best=0;break;}
+   if(term.includes(word))best=Math.min(best,1);
+   else if(word.length>=4&&oneEditAway(word,term))best=Math.min(best,2);
+   else if(term.endsWith('ات')&&word===term.slice(0,-2)+'ه')best=Math.min(best,2);
+   else if(word.length>=3&&term.replace(/ا/g,'')===word.replace(/ا/g,''))best=Math.min(best,3);
+  }
+  if(!Number.isFinite(best))return Infinity;
+  total+=best;
+ }
+ return total;
+}
 function fillSelect(query=''){
- const q=query.trim().toLocaleLowerCase('ar');
- const found=data.items.filter(x=>(x.title+' '+x.intro.map(y=>y.text).join(' ')).toLocaleLowerCase('ar').includes(q));
+ const words=searchWords(query);
+ const found=data.items.map((item,index)=>({item,index,score:activitySearchScore(item,words)}))
+  .filter(result=>Number.isFinite(result.score)).sort((a,b)=>a.score-b.score||a.index-b.index).map(result=>result.item);
  els.select.replaceChildren(...found.map(item=>{const option=document.createElement('option');option.value=item.id;option.textContent=item.title;return option;}));
  els.count.textContent=`${found.length.toLocaleString('ar')} نشاط`;
  if(selected&&found.some(x=>x.id===selected.id))els.select.value=selected.id;
