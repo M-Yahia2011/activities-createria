@@ -62,13 +62,14 @@ function activitySearchScore(item,query){
  const terms=words.concat(words.slice(0,-1).map((word,index)=>word+words[index+1]));
  let total=0;
  for(const word of query){
+  const compactWord=word.replace(/ا/g,'');
   let best=Infinity;
   for(const term of terms){
    if(term===word){best=0;break;}
    if(term.includes(word))best=Math.min(best,1);
    else if(word.length>=4&&oneEditAway(word,term))best=Math.min(best,2);
    else if(term.endsWith('ات')&&word===term.slice(0,-2)+'ه')best=Math.min(best,2);
-   else if(word.length>=3&&term.replace(/ا/g,'')===word.replace(/ا/g,''))best=Math.min(best,3);
+   else if(compactWord.length>=3&&term.replace(/ا/g,'').startsWith(compactWord))best=Math.min(best,3);
   }
   if(!Number.isFinite(best))return Infinity;
   total+=best;
