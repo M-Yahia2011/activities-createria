@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#8a1538">
-  <meta name="description" content="ابحث عن اشتراطات النشاط الغذائي وأرسل رسالة واتساب أو شارك ملف PDF الجاهز.">
+  <meta name="description" content="اختر نشاطًا غذائيًا وأرسل رسالة واتساب أو شارك ملف PDF الجاهز.">
   <title>اشتراطات الأنشطة الغذائية</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -20,7 +20,7 @@
   <main id="top" class="layout">
     <section class="intro">
       <div class="intro-copy">
-        <span class="eyebrow">ابحث · اختر · أرسل</span>
+        <span class="eyebrow">اختر · أرسل</span>
         <h1>اشتراطات نشاطك، جاهزة للمشاركة</h1>
         <p>اختر نشاطًا غذائيًا، ثم أرسل رسالة واتساب أو شارك ملف الاشتراطات الجاهز.</p>
       </div>
@@ -29,12 +29,11 @@
     <section class="workspace" aria-label="اختيار النشاط وتجهيز الملف">
       <div class="picker panel">
         <div class="section-head">
-          <div><span class="step">١</span><div><h2>اختر النشاط</h2><p>ابحث بالاسم أو تصفح القائمة</p></div></div>
+          <div><span class="step">١</span><div><h2>اختر النشاط</h2><p>جميع الأنشطة متاحة في القائمة</p></div></div>
           <span class="count" id="activity-count"></span>
         </div>
-        <label class="searchbox" for="search-activity"><span aria-hidden="true">⌕</span><input id="search-activity" type="search" placeholder="مثال: مطعم، مخبز، مقصب" autocomplete="off"></label>
         <label class="select-label" for="activity-select">النشاط</label>
-        <select id="activity-select" size="9" aria-label="قائمة الأنشطة"></select>
+        <select id="activity-select" aria-label="قائمة الأنشطة"><option value="" disabled selected>اختر نشاطًا من القائمة</option></select>
         <div class="activity-summary" id="activity-summary">اختر نشاطًا من القائمة للمتابعة.</div>
       </div>
 
