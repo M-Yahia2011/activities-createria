@@ -26,8 +26,9 @@ function renderPreview(){
  if(!selected)return;
  lastPdf=null;
  const intro=selected.intro.map(x=>x.text).join(' ');
+ const source=selected.source||data.source;
  els.summary.textContent=intro||'تم تحميل نصوص النشاط من الملحق.';
- els.preview.innerHTML=`<h2 class="doc-title">${escapeHtml(selected.title)}</h2><p class="doc-source">${escapeHtml(data.source)}</p>`+
+ els.preview.innerHTML=`<h2 class="doc-title">${escapeHtml(selected.title)}</h2><p class="doc-source">${escapeHtml(source)}</p>`+
  (intro?`<p class="doc-paragraph">${escapeHtml(intro)}</p>`:'')+
  ['general','specific','operations'].map(key=>`<section class="doc-section"><h3>${sectionNames[key]}</h3>${sectionMarkup(selected[key])}</section>`).join('');
  els.subtitle.textContent=`${selected.title} · الاشتراطات كاملة`;
@@ -50,7 +51,8 @@ function fillSelect(){
 async function hostedPdf(item=selected){
  if(!item)throw new Error('اختر نشاطًا أولًا.');
  if(selected?.id===item.id&&lastPdf)return lastPdf;
- const response=await fetch(`pdfs/${encodeURIComponent(item.id)}.pdf`);
+ const pdfPath=item.pdfFile||`${item.id}.pdf`;
+ const response=await fetch(`pdfs/${encodeURIComponent(pdfPath)}`);
  if(!response.ok)throw new Error('تعذر تحميل ملف PDF المستضاف. حاول مرة أخرى.');
  const blob=await response.blob();
  if(blob.size<5000)throw new Error('ملف PDF المستضاف غير مكتمل. حاول مرة أخرى.');
@@ -59,7 +61,7 @@ async function hostedPdf(item=selected){
  return file;
 }
 function downloadFile(file){const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
-function makeWhatsAppUrl(number){const message=`مرفق اشتراطات نشاط: ${selected.title}\n${data.source}`;return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;}
+function makeWhatsAppUrl(number){const message=`مرفق اشتراطات نشاط: ${selected.title}\n${selected.source||data.source}`;return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;}
 els.select.addEventListener('change',e=>setActivity(e.target.value));
 els.phone.addEventListener('input',normalizePhoneInput);
 els.toggle.addEventListener('click',()=>{const collapsed=els.preview.classList.toggle('collapsed');els.toggle.textContent=collapsed?'عرض المعاينة':'طي المعاينة';});
@@ -83,3 +85,4 @@ els.share.addEventListener('click',async()=>{
  }catch(e){if(e.name==='AbortError')setStatus('أُلغيت المشاركة.');else setStatus(e.message,true);}finally{els.share.disabled=!selected;}
 });
 fetch('assets/requirements.json').then(r=>{if(!r.ok)throw new Error('تعذر تحميل بيانات الأنشطة.');return r.json();}).then(json=>{data=json;fillSelect();}).catch(e=>{setStatus(e.message,true);});
+
