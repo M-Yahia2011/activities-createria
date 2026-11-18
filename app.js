@@ -8,6 +8,12 @@ function sectionMarkup(blocks){return blocks.map(b=>b.kind==='heading'?`<h4>${es
 function renderPreview(){
  if(!selected)return;
  lastPdf=null;
+ if(selected.documentOnly){
+  els.summary.textContent='الملف الأصلي مرفق كما هو.';
+  els.preview.innerHTML=`<h2 class="doc-title">${escapeHtml(selected.title)}</h2><p class="doc-paragraph">الملف الأصلي مرفق كما هو، دون استخراج نصه.</p>`;
+  els.subtitle.textContent=`${selected.title} · الملف الأصلي`;
+  return;
+ }
  const intro=selected.intro.map(x=>x.text).join(' ');
  const source=selected.source||data.source;
  els.summary.textContent=intro||'تم تحميل نصوص النشاط من الملحق.';

@@ -38144,6 +38144,26 @@
           "text": "فصل الأغذية النيئة عن المطهية أو الجاهزة للأكل، وتخصيص ثلاجات منفصلة لها لمنع التلوث التبادلي."
         }
       ]
+    },
+    {
+      "id": "men-salons",
+      "title": "الصالونات الرجالية",
+      "documentOnly": true,
+      "pdfFile": "القرار الوزارى -الصالونات الرجالية(3).pdf",
+      "intro": [],
+      "general": [],
+      "specific": [],
+      "operations": []
+    },
+    {
+      "id": "women-salons",
+      "title": "الصالونات النسائية",
+      "documentOnly": true,
+      "pdfFile": "القرار الوزارى الصالونات النسائية(3).pdf",
+      "intro": [],
+      "general": [],
+      "specific": [],
+      "operations": []
     }
   ]
 }
