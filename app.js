@@ -1,25 +1,8 @@
-const els={select:document.querySelector('#activity-select'),count:document.querySelector('#activity-count'),summary:document.querySelector('#activity-summary'),preview:document.querySelector('#preview-content'),subtitle:document.querySelector('#preview-subtitle'),phone:document.querySelector('#phone'),status:document.querySelector('#status'),send:document.querySelector('#send-whatsapp'),share:document.querySelector('#share-pdf'),toggle:document.querySelector('#toggle-preview')};
+const els={select:document.querySelector('#activity-select'),count:document.querySelector('#activity-count'),summary:document.querySelector('#activity-summary'),preview:document.querySelector('#preview-content'),subtitle:document.querySelector('#preview-subtitle'),status:document.querySelector('#status'),share:document.querySelector('#share-pdf'),toggle:document.querySelector('#toggle-preview')};
 const sectionNames={general:'الاشتراطات العامة المناسبة للنشاط',specific:'الاشتراطات الخاصة بالنشاط',operations:'الممارسات والإجراءات التشغيلية المناسبة للنشاط'};
 let data=null,selected=null,lastPdf=null;
 
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function latinDigits(s){return s.replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));}
-function localPhoneDigits(value){
- let digits=latinDigits(value).replace(/\D/g,'');
- if(digits.startsWith('00974')&&digits.length===13)digits=digits.slice(5);
- else if(digits.startsWith('974')&&digits.length===11)digits=digits.slice(3);
- return digits;
-}
-function cleanPhone(){
- const digits=localPhoneDigits(els.phone.value);
- return digits.length===8?`974${digits}`:null;
-}
-function normalizePhoneInput(){
- const original=els.phone.value,ascii=latinDigits(original);
- const local=localPhoneDigits(ascii);
- const normalized=local.length===8&&ascii.replace(/\D/g,'').length!==8?local:ascii;
- if(normalized!==original){const cursor=els.phone.selectionStart??normalized.length;els.phone.value=normalized;const position=normalized===ascii?Math.min(cursor,normalized.length):normalized.length;els.phone.setSelectionRange(position,position);}
-}
 function setStatus(message,error=false){els.status.textContent=message;els.status.classList.toggle('error',error);}
 function sectionMarkup(blocks){return blocks.map(b=>b.kind==='heading'?`<h4>${escapeHtml(b.text)}</h4>`:`<p class="doc-paragraph">${escapeHtml(b.text)}</p>`).join('');}
 function renderPreview(){
@@ -33,11 +16,11 @@ function renderPreview(){
  ['general','specific','operations'].map(key=>`<section class="doc-section"><h3>${sectionNames[key]}</h3>${sectionMarkup(selected[key])}</section>`).join('');
  els.subtitle.textContent=`${selected.title} · الاشتراطات كاملة`;
 }
-function clearActivity(message){selected=null;lastPdf=null;els.send.disabled=true;els.share.disabled=true;els.select.selectedIndex=0;els.preview.innerHTML='<p>اختر نشاطًا لعرض اشتراطاته.</p>';els.subtitle.textContent='محتوى النشاط المختار';els.summary.textContent=message;setStatus('');}
+function clearActivity(message){selected=null;lastPdf=null;els.share.disabled=true;els.select.selectedIndex=0;els.preview.innerHTML='<p>اختر نشاطًا لعرض اشتراطاته.</p>';els.subtitle.textContent='محتوى النشاط المختار';els.summary.textContent=message;setStatus('');}
 function setActivity(id){
  selected=data.items.find(x=>x.id===id)||null;
  if(!selected){clearActivity('اختر نشاطًا من القائمة للمتابعة.');return;}
- renderPreview();els.send.disabled=false;els.share.disabled=true;setStatus('جارٍ تحميل ملف النشاط…');
+ renderPreview();els.share.disabled=true;setStatus('جارٍ تحميل ملف النشاط…');
  const item=selected;
  hostedPdf(item).then(()=>{if(selected===item){els.share.disabled=false;setStatus('الملف جاهز للمشاركة.');}})
   .catch(()=>{if(selected===item){els.share.disabled=false;setStatus('تعذر تحميل الملف. اضغط «مشاركة الملف» للمحاولة مجددًا.',true);}});
@@ -61,17 +44,8 @@ async function hostedPdf(item=selected){
  return file;
 }
 function downloadFile(file){const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
-function makeWhatsAppUrl(number){const message=`مرفق اشتراطات نشاط: ${selected.title}\n${selected.source||data.source}`;return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;}
 els.select.addEventListener('change',e=>setActivity(e.target.value));
-els.phone.addEventListener('input',normalizePhoneInput);
 els.toggle.addEventListener('click',()=>{const collapsed=els.preview.classList.toggle('collapsed');els.toggle.textContent=collapsed?'عرض المعاينة':'طي المعاينة';});
-els.send.addEventListener('click',()=>{
- if(!selected)return;
- const number=cleanPhone();if(!number){setStatus('اكتب رقمًا قطريًا من ٨ أرقام بعد المفتاح 974.',true);els.phone.focus();return;}
- const url=makeWhatsAppUrl(number),win=window.open(url,'_blank');
- if(win){win.opener=null;setStatus('فُتحت محادثة واتساب بالنص الحالي. اضغط إرسال داخل واتساب.');}
- else window.location.href=url;
-});
 els.share.addEventListener('click',async()=>{
  if(!selected)return;
  els.share.disabled=true;
