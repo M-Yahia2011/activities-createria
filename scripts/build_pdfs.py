@@ -2,6 +2,7 @@
 """Build one complete hosted PDF per activity (reportlab, arabic-reshaper, python-bidi)."""
 
 import json
+import re
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -35,8 +36,9 @@ def shaped(value):
 
 
 class Document:
-    def __init__(self, path):
+    def __init__(self, path, classic=False):
         self.pdf = canvas.Canvas(str(path), pagesize=A4, pageCompression=1)
+        self.classic = classic
         self.page = 0
         self.new_page()
 
@@ -45,12 +47,20 @@ class Document:
             self.pdf.showPage()
         self.page += 1
         p = self.pdf
-        p.setStrokeColor(HexColor('#7e153a'))
-        p.setLineWidth(2.1)
-        p.rect(17, 17, PAGE_W - 34, PAGE_H - 34)
-        p.setStrokeColor(HexColor('#be9747'))
-        p.setLineWidth(.7)
-        p.rect(22, 22, PAGE_W - 44, PAGE_H - 44)
+        if self.classic:
+            p.setStrokeColor(HexColor('#7e153a'))
+            p.setLineWidth(2.1)
+            p.rect(17, 17, PAGE_W - 34, PAGE_H - 34)
+            p.setStrokeColor(HexColor('#be9747'))
+            p.setLineWidth(.7)
+            p.rect(22, 22, PAGE_W - 44, PAGE_H - 44)
+        else:
+            p.setStrokeColor(HexColor('#d5e0dc'))
+            p.setLineWidth(.7)
+            p.line(LEFT, 48, RIGHT, 48)
+            p.setFillColor(HexColor('#667a73'))
+            p.setFont('Arabic', 8)
+            p.drawCentredString(PAGE_W / 2, 32, shaped(f'صفحة {self.page}'))
         self.y = PAGE_H - 53
 
     def room(self, points):
@@ -80,19 +90,22 @@ class Document:
         if level == 2:
             self.room(60)
             self.y -= 12
-            self.line(content, 14.5, '#164f3c', 27)
-            self.pdf.setStrokeColor(HexColor('#cadbd1'))
-            self.pdf.setLineWidth(.7)
-            self.pdf.line(LEFT, self.y + 2, RIGHT, self.y + 2)
-            self.y -= 8
+            if self.classic:
+                self.line(content, 14.5, '#164f3c', 27)
+                self.y -= 8
+            else:
+                self.pdf.setFillColor(HexColor('#ffffff'))
+                self.pdf.rect(LEFT, self.y - 4, TEXT_W, 23, fill=1, stroke=0)
+                self.line(content, 13, '#164f3c', 23)
+                self.y -= 5
         else:
-            self.room(45)
-            self.y -= 7
-            self.line(content, 11.2, '#244e40', 20)
+            self.room(35)
+            self.y -= 5
+            self.line(content, 10.5 if self.classic else 11.2, '#244e40', 16 if self.classic else 20)
 
     def paragraph(self, content):
         # Wrap logical words, then reshape each line for correct Arabic ligatures and direction.
-        size, leading = 10.4, 16.4
+        size, leading = (9.2, 13.3) if self.classic else (10.4, 16.4)
         self.y -= 4
         for segment in content.split('\n'):
             current = ''
@@ -111,6 +124,8 @@ class Document:
         for block in items:
             if block['kind'] == 'heading':
                 self.heading(block['text'], 3)
+            elif self.classic and re.match(r'^\d+[.]\s+', block['text']):
+                self.heading(block['text'], 3)
             else:
                 self.paragraph(block['text'])
 
@@ -121,19 +136,25 @@ class Document:
 
 def build(item):
     path = OUT / f'{item["id"]}.pdf'
-    doc = Document(path)
+    classic = item['id'].startswith(('32-', '33-'))
+    doc = Document(path, classic=classic)
     p = doc.pdf
-    p.drawImage(ImageReader(str(ROOT / 'assets' / 'municipality-aldaayen.png')),
-                LEFT, doc.y - 59, width=93, height=59, preserveAspectRatio=True, anchor='c', mask='auto')
-    p.drawImage(ImageReader(str(ROOT / 'assets' / 'qatar-ministry.png')),
-                RIGHT - 93, doc.y - 59, width=93, height=59, preserveAspectRatio=True, anchor='c', mask='auto')
-    doc.y -= 70
+    if classic:
+        p.setTitle(item['title'])
+        p.setAuthor('اشتراطات الأنشطة الغذائية')
+        p.drawImage(ImageReader(str(ROOT / 'assets' / 'municipality-aldaayen.png')),
+                    LEFT, doc.y - 59, width=93, height=59, preserveAspectRatio=True, anchor='c', mask='auto')
+        p.drawImage(ImageReader(str(ROOT / 'assets' / 'qatar-ministry.png')),
+                    RIGHT - 93, doc.y - 59, width=93, height=59, preserveAspectRatio=True, anchor='c', mask='auto')
+        doc.y -= 70
+    else:
+        doc.y -= 8
     p.setStrokeColor(HexColor('#d8c79c'))
     p.setLineWidth(.8)
     p.line(LEFT, doc.y, RIGHT, doc.y)
     doc.y -= 17
-    doc.line(item['title'], 20, '#701334', 34)
-    doc.line('اشتراطات المنشآت الغذائية', 10, '#445b50', 21)
+    doc.line(item['title'], 17 if classic else 20, '#701334', 30 if classic else 34)
+    doc.line('اشتراطات المنشآت الغذائية', 9 if classic else 10, '#445b50', 18 if classic else 21)
     doc.y -= 10
     doc.blocks([
         {**block, 'text': block['text'].split('المصدر الرسمي:')[0].rstrip()}
