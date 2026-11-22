@@ -4,7 +4,22 @@
 
 ملفات PDF الكاملة للأنشطة موجودة في `pdfs/`، وتُنشر كملفات ثابتة مع الموقع. يحمل التطبيق ملف النشاط مباشرة من Netlify، ولا يولّد ملفات PDF في المتصفح. أضيفت ثلاثة أنشطة لمغاسل الملابس، وتعرض ملفات الملحق رقم (4) كاملة عند مشاركة أي من أنشطة المغسلة.
 
-لتحديث ملفات PDF بعد تعديل `assets/requirements.json`، ثبّت `reportlab` و`arabic-reshaper` و`python-bidi` في بيئة Python على macOS، ثم شغّل `python3 scripts/build_pdfs.py`. يتطلب السكربت خط Arial المرفق بالنظام في `/System/Library/Fonts/Supplemental/Arial.ttf`.
+### توليد ملفات PDF
+
+على macOS، ثبّت التبعيات في بيئة افتراضية ثم شغّل المولّد:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r scripts/requirements.txt
+python3 scripts/build_pdfs.py
+```
+
+لتوليد ملف نشاط واحد فقط: `python3 scripts/build_pdfs.py <activity-id>`. يتطلب المولّد خط Arial المرفق بالنظام في `/System/Library/Fonts/Supplemental/Arial.ttf`.
+
+ملفات أنشطة المغاسل الثلاثة، بما فيها صيغتا ترميز Unicode لاسم ملف الغسيل الآلي، وملفات الصالونات الأصلية محفوظة كما هي. يتخطّى المولّد أيضًا أي نشاط يستخدم `documentOnly` أو يحدد ملفًا جاهزًا في `pdfFile`. اختيار أحد هذه الأنشطة صراحةً لن يكتب أي ملف.
+
+لتشغيل اختبارات الحماية: `python3 -m unittest discover -s scripts -p 'test_*.py'`.
 
 ## النشر على Netlify
 

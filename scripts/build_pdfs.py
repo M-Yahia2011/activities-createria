@@ -6,6 +6,7 @@ import re
 import sys
 from functools import lru_cache
 from pathlib import Path
+from unicodedata import normalize
 
 import arabic_reshaper
 from bidi.algorithm import get_display
@@ -28,6 +29,37 @@ SECTIONS = (
 PAGE_W, PAGE_H = A4
 LEFT, RIGHT, BOTTOM = 51, PAGE_W - 51, 56
 TEXT_W = RIGHT - LEFT
+# These activities have individually prepared PDFs, not generated from requirements.json.
+AUTHORED_PDF_IDS = frozenset((
+    '29-غسيل-الملابس-العادي',
+    '30-غسيل-الملابس-الآلي',
+    '31-كي-الملابس',
+))
+
+
+def source_authored(item):
+    return (
+        normalize('NFC', item['id']) in AUTHORED_PDF_IDS
+        or item.get('documentOnly')
+        or bool(item.get('pdfFile'))
+    )
+
+
+def file_key(filename):
+    # Protect both Unicode spellings of the automatic-wash filename.
+    return normalize('NFC', filename).casefold()
+
+
+def protected_filenames(items):
+    names = {file_key(f'{activity_id}.pdf') for activity_id in AUTHORED_PDF_IDS}
+    for item in items:
+        if source_authored(item):
+            names.add(file_key(item.get('pdfFile') or f'{item["id"]}.pdf'))
+    return names
+
+
+def is_protected(item, filenames):
+    return source_authored(item) or file_key(f'{item["id"]}.pdf') in filenames
 
 
 @lru_cache(maxsize=100000)
@@ -167,12 +199,21 @@ def build(item):
 
 
 def main():
-    pdfmetrics.registerFont(TTFont('Arabic', FONT))
-    items = json.loads((ROOT / 'assets' / 'requirements.json').read_text())['items']
+    if len(sys.argv) > 2:
+        raise SystemExit('Usage: python3 scripts/build_pdfs.py [activity-id]')
+    items = json.loads((ROOT / 'assets' / 'requirements.json').read_text(encoding='utf-8'))['items']
+    protected = protected_filenames(items)
     if len(sys.argv) == 2:
         items = [item for item in items if item['id'] == sys.argv[1]]
         if not items:
             raise SystemExit('Unknown activity ID')
+        if is_protected(items[0], protected):
+            raise SystemExit(f'{items[0]["id"]}: PDF is source-authored; generator did not write it.')
+    else:
+        items = [item for item in items if not is_protected(item, protected)]
+    if not items:
+        return
+    pdfmetrics.registerFont(TTFont('Arabic', FONT))
     OUT.mkdir(exist_ok=True)
     for index, item in enumerate(items, 1):
         path, pages = build(item)
